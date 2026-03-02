@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// أيقونة الخريطة المرقمة
 const createNumberedIcon = (number) => {
   return L.divIcon({
     html: `<div style="background-color: #3b82f6; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: 800; font-size: 10px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);">${number}</div>`,
@@ -14,6 +15,7 @@ const createNumberedIcon = (number) => {
   });
 };
 
+// وظيفة لتحديث موقع الخريطة برمجياً
 function MapController({ center }) {
   const map = useMap();
   useEffect(() => {
@@ -85,7 +87,7 @@ export default function App() {
                 setPoints([...tempPoints]);
               }
               setProcessedCount(i + 1);
-              await new Promise(r => setTimeout(r, 350));
+              await new Promise(r => setTimeout(r, 400)); // تأخير بسيط لتجنب حظر البحث
             } catch (err) { console.error(err); }
           }
         }
@@ -97,34 +99,31 @@ export default function App() {
     reader.readAsBinaryString(file);
   };
 
-  const containerStyle = {
-    height: "100vh",
-    display: "flex",
-    flexDirection: isMobile ? "column" : "row",
-    background: "#020617",
-    color: "white",
-    direction: "rtl",
-    fontFamily: "sans-serif",
-    overflow: "hidden"
-  };
-
-  const sidebarStyle = {
-    width: isMobile ? "100%" : "360px",
-    height: isMobile ? "40%" : "100vh",
-    background: "#0f172a",
-    padding: "20px",
-    borderLeft: isMobile ? "none" : "2px solid #1e293b",
-    borderTop: isMobile ? "2px solid #1e293b" : "none",
-    zIndex: 1000,
-    display: "flex",
-    flexDirection: "column"
-  };
-
   return (
-    <div style={containerStyle}>
+    <div style={{
+      height: "100vh",
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      background: "#020617",
+      color: "white",
+      direction: "rtl",
+      fontFamily: "sans-serif",
+      overflow: "hidden"
+    }}>
       
-      {/* Sidebar / Bottom Panel */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={sidebarStyle}>
+      {/* Sidebar - القائمة الجانبية أو السفلية */}
+      <div style={{
+        width: isMobile ? "100%" : "360px",
+        height: isMobile ? "40%" : "100vh",
+        background: "#0f172a",
+        padding: "20px",
+        borderLeft: isMobile ? "none" : "2px solid #1e293b",
+        borderTop: isMobile ? "2px solid #1e293b" : "none",
+        zIndex: 1000,
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 0 20px rgba(0,0,0,0.5)"
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
           <span style={{ fontSize: "20px" }}>🎯</span>
           <h1 style={{ color: "#3b82f6", fontSize: "18px", margin: 0, fontWeight: "900" }}>VISIONARY MAP</h1>
@@ -135,7 +134,7 @@ export default function App() {
           <div style={{ fontSize: "20px", fontWeight: "bold", color: "#10b981" }}>{totalSales.toLocaleString()} <span style={{fontSize: "10px"}}>ر.س</span></div>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflowY: "auto", paddingLeft: "5px" }}>
           <h4 style={{ fontSize: "13px", color: "#3b82f6", marginBottom: "10px", borderBottom: "1px solid #1e293b", paddingBottom: "5px" }}>📊 مبيعات الأحياء</h4>
           {Object.entries(districtSales).sort((a,b) => b[1]-a[1]).map(([name, value], idx) => (
             <div key={idx} style={{ padding: "10px", background: "#1e293b66", borderRadius: "8px", marginBottom: "6px", border: "1px solid #1e293b", display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
@@ -144,7 +143,57 @@ export default function App() {
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Map Area */}
-      <div style={{ flex: 1
+      {/* Main Map Area - منطقة الخريطة */}
+      <div style={{ flex: 1, position: "relative", height: isMobile ? "60%" : "100%" }}>
+        <div style={{ position: "absolute", top: "15px", right: "15px", zIndex: 1100, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <label style={{ 
+            background: "#3b82f6", 
+            color: "white", 
+            padding: "12px 20px", 
+            borderRadius: "10px", 
+            cursor: "pointer", 
+            fontWeight: "bold", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "8px", 
+            boxShadow: "0 5px 15px rgba(0,0,0,0.4)", 
+            fontSize: isMobile ? "13px" : "15px",
+            transition: "transform 0.2s"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <span>📂</span> ارفع الملف (Excel)
+            <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+          </label>
+          
+          <AnimatePresence>
+            {loading && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ background: "#0f172a", border: "1px solid #fbbf24", color: "#fbbf24", padding: "8px", borderRadius: "8px", fontSize: "11px", textAlign: "center", boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>
+                ⏳ معالجة العميل رقم: {processedCount}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+          <MapController center={[21.5433, 39.1728]} />
+          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+          {points.map((p) => (
+            <Marker key={p.id} position={[p.lat, p.lng]} icon={createNumberedIcon(p.id)}>
+              <Tooltip sticky>
+                <div style={{ textAlign: "right", fontSize: "12px", padding: "5px" }}>
+                  <strong style={{ color: "#3b82f6" }}>{p.name}</strong><br/>
+                  📍 حي: {p.district}<br/>
+                  💰 المبيع: {p.revenue.toLocaleString()} ر.س
+                </div>
+              </Tooltip>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
+    </div>
+  );
+}
