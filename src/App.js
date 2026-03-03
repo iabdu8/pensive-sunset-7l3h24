@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap, Circle } from "react-leaflet";
 import * as XLSX from "xlsx";
 import L from "leaflet";
+import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
-// أيقونة الخريطة المرقمة
+// أيقونة الخريطة (تصميم عصري متوهج)
 const createNumberedIcon = (number) => {
   return L.divIcon({
-    html: `<div style="background-color: #3b82f6; color: white; border: 2px solid white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: 800; font-size: 10px; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);">${number}</div>`,
-    className: "custom-icon",
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    html: `<div style="background: #3b82f6; color: white; border: 2px solid #60a5fa; border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 12px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);">${number}</div>`,
+    className: "custom-marker",
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
   });
 };
 
-// وظيفة لتحديث موقع الخريطة برمجياً
 function MapController({ center }) {
   const map = useMap();
   useEffect(() => {
-    if (center) map.setView(center, 11, { animate: true });
+    if (center) map.setView(center, 12, { animate: true });
   }, [center, map]);
   return null;
 }
@@ -30,170 +29,155 @@ export default function App() {
   const [totalSales, setTotalSales] = useState(0);
   const [loading, setLoading] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const mapRef = useRef(null);
 
-  // مراقبة حجم الشاشة للتكيف مع الجوال
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  // حساب لون التوهج بناءً على المبيعات
+  const getHeatColor = (revenue) => {
+    const max = Math.max(...Object.values(districtSales), 1);
+    const ratio = revenue / max;
+    if (ratio > 0.8) return "#ff4d4d"; // أحمر ناري للأقوى
+    if (ratio > 0.4) return "#fbbf24"; // ذهبي للمتوسط
+    return "#3b82f6"; // أزرق هادئ
+  };
+
+  const exportAsImage = async () => {
+    if (!mapRef.current) return;
+    const canvas = await html2canvas(mapRef.current, { useCORS: true, backgroundColor: "#020617" });
+    const link = document.createElement("a");
+    link.download = `تقرير_مبيعات_جدة.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
 
   const handleUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true);
-    setPoints([]);
-    setDistrictSales({});
-    setProcessedCount(0);
-
     const reader = new FileReader();
     reader.onload = async (evt) => {
-      try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: "binary" });
-        const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      const bstr = evt.target.result;
+      const wb = XLSX.read(bstr, { type: "binary" });
+      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      let salesSum = 0;
+      let salesPerDist = {};
+      let tempPoints = [];
 
-        let salesSum = 0;
-        let salesPerDistrict = {};
-        let tempPoints = [];
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const keys = Object.keys(row);
+        const distKey = keys.find(k => k.includes("حي") || k.includes("District"));
+        const saleKey = keys.find(k => k.includes("مبيع") || k.includes("مبلغ") || k.includes("قيمة"));
+        let dist = String(row[distKey] || "").trim();
+        let rev = parseFloat(row[saleKey]) || 0;
 
-        for (let i = 0; i < data.length; i++) {
-          const row = data[i];
-          const keys = Object.keys(row);
-          const districtKey = keys.find(k => k.includes("حي") || k.includes("District") || k.includes("المنطقة"));
-          const salesKey = keys.find(k => k.includes("مبيع") || k.includes("مبلغ") || k.includes("قيمة"));
-
-          let rawDistrict = String(row[districtKey] || "").trim();
-          let revenue = parseFloat(row[salesKey]) || 0;
-
-          if (rawDistrict) {
-            salesSum += revenue;
-            salesPerDistrict[rawDistrict] = (salesPerDistrict[rawDistrict] || 0) + revenue;
-
-            try {
-              const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(rawDistrict + " Jeddah")}`);
-              const result = await response.json();
-
-              if (result && result.length > 0) {
-                tempPoints.push({
-                  id: tempPoints.length + 1,
-                  lat: parseFloat(result[0].lat) + (Math.random() - 0.5) * 0.004,
-                  lng: parseFloat(result[0].lon) + (Math.random() - 0.5) * 0.004,
-                  district: rawDistrict,
-                  revenue: revenue,
-                  name: row[keys[0]] || "عميل"
-                });
-                setPoints([...tempPoints]);
-              }
-              setProcessedCount(i + 1);
-              await new Promise(r => setTimeout(r, 400)); // تأخير بسيط لتجنب حظر البحث
-            } catch (err) { console.error(err); }
-          }
+        if (dist) {
+          salesSum += rev;
+          salesPerDist[dist] = (salesPerDist[dist] || 0) + rev;
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(dist + " Jeddah")}`);
+            const json = await res.json();
+            if (json[0]) {
+              tempPoints.push({
+                id: tempPoints.length + 1,
+                lat: parseFloat(json[0].lat) + (Math.random() - 0.5) * 0.006,
+                lng: parseFloat(json[0].lon) + (Math.random() - 0.5) * 0.006,
+                district: dist,
+                revenue: rev,
+                name: row[keys[0]] || "عميل"
+              });
+              setPoints([...tempPoints]);
+            }
+            setProcessedCount(i + 1);
+            await new Promise(r => setTimeout(r, 400));
+          } catch (err) { console.error(err); }
         }
-        setDistrictSales(salesPerDistrict);
-        setTotalSales(salesSum);
-      } catch (error) { console.error(error); }
-      finally { setLoading(false); }
+      }
+      setDistrictSales(salesPerDist);
+      setTotalSales(salesSum);
+      setLoading(false);
     };
     reader.readAsBinaryString(file);
   };
 
   return (
-    <div style={{
-      height: "100vh",
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      background: "#020617",
-      color: "white",
-      direction: "rtl",
-      fontFamily: "sans-serif",
-      overflow: "hidden"
-    }}>
+    <div style={{ height: "100dvh", width: "100vw", position: "relative", background: "#020617", overflow: "hidden", direction: "rtl", fontFamily: "sans-serif" }}>
       
-      {/* Sidebar - القائمة الجانبية أو السفلية */}
-      <div style={{
-        width: isMobile ? "100%" : "360px",
-        height: isMobile ? "40%" : "100vh",
-        background: "#0f172a",
-        padding: "20px",
-        borderLeft: isMobile ? "none" : "2px solid #1e293b",
-        borderTop: isMobile ? "2px solid #1e293b" : "none",
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 0 20px rgba(0,0,0,0.5)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "15px" }}>
-          <span style={{ fontSize: "20px" }}>🎯</span>
-          <h1 style={{ color: "#3b82f6", fontSize: "18px", margin: 0, fontWeight: "900" }}>VISIONARY MAP</h1>
-        </div>
-
-        <div style={{ background: "#1e293b", padding: "12px", borderRadius: "12px", marginBottom: "15px", border: "1px solid #10b981" }}>
-          <div style={{ fontSize: "10px", color: "#94a3b8" }}>💰 إجمالي المبيعات</div>
-          <div style={{ fontSize: "20px", fontWeight: "bold", color: "#10b981" }}>{totalSales.toLocaleString()} <span style={{fontSize: "10px"}}>ر.س</span></div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: "auto", paddingLeft: "5px" }}>
-          <h4 style={{ fontSize: "13px", color: "#3b82f6", marginBottom: "10px", borderBottom: "1px solid #1e293b", paddingBottom: "5px" }}>📊 مبيعات الأحياء</h4>
-          {Object.entries(districtSales).sort((a,b) => b[1]-a[1]).map(([name, value], idx) => (
-            <div key={idx} style={{ padding: "10px", background: "#1e293b66", borderRadius: "8px", marginBottom: "6px", border: "1px solid #1e293b", display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-              <span>{name}</span>
-              <span style={{ color: "#10b981", fontWeight: "bold" }}>{value.toLocaleString()}</span>
-            </div>
-          ))}
-        </div>
+      {/* 🟢 Header: أزرار الرفع والتصدير (دائماً فوق) */}
+      <div style={{ position: "absolute", top: "15px", left: "15px", right: "15px", zIndex: 2000, display: "flex", gap: "10px", justifyContent: "center" }}>
+        <label style={{ background: "#2563eb", color: "white", padding: "12px 20px", borderRadius: "12px", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 8px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: "8px" }}>
+          <span>📂</span> رفع Excel
+          <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+        </label>
+        
+        {points.length > 0 && (
+          <button onClick={exportAsImage} style={{ background: "#10b981", color: "white", padding: "12px 20px", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
+            📸 حفظ الصورة
+          </button>
+        )}
       </div>
 
-      {/* Main Map Area - منطقة الخريطة */}
-      <div style={{ flex: 1, position: "relative", height: isMobile ? "60%" : "100%" }}>
-        <div style={{ position: "absolute", top: "15px", right: "15px", zIndex: 1100, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ 
-            background: "#3b82f6", 
-            color: "white", 
-            padding: "12px 20px", 
-            borderRadius: "10px", 
-            cursor: "pointer", 
-            fontWeight: "bold", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "8px", 
-            boxShadow: "0 5px 15px rgba(0,0,0,0.4)", 
-            fontSize: isMobile ? "13px" : "15px",
-            transition: "transform 0.2s"
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <span>📂</span> ارفع الملف 
-            <input type="file" onChange={handleUpload} style={{ display: "none" }} />
-          </label>
-          
-          <AnimatePresence>
-            {loading && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ background: "#0f172a", border: "1px solid #fbbf24", color: "#fbbf24", padding: "8px", borderRadius: "8px", fontSize: "11px", textAlign: "center", boxShadow: "0 4px 10px rgba(0,0,0,0.3)" }}>
-                ⏳ معالجة العميل رقم: {processedCount}
-              </motion.div>
-            )}
-          </AnimatePresence>
+      {/* 📊 Floating Stats: لوحة إحصائيات شفافة فخمة */}
+      <div style={{ 
+        position: "absolute", 
+        bottom: "20px", 
+        right: "15px", 
+        left: "15px", 
+        zIndex: 1500, 
+        background: "rgba(15, 23, 42, 0.85)", 
+        backdropFilter: "blur(10px)", 
+        padding: "15px", 
+        borderRadius: "20px", 
+        border: "1px solid rgba(255,255,255,0.1)",
+        maxHeight: "30vh",
+        overflowY: "auto",
+        boxShadow: "0 -10px 25px rgba(0,0,0,0.5)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", borderBottom: "1px solid #334155", paddingBottom: "10px" }}>
+          <span style={{ fontSize: "14px", color: "#94a3b8" }}>إجمالي المبيعات:</span>
+          <span style={{ fontSize: "20px", fontWeight: "bold", color: "#10b981" }}>{totalSales.toLocaleString()} <small style={{fontSize: "10px"}}>ر.س</small></span>
         </div>
+        
+        {Object.entries(districtSales).sort((a,b) => b[1]-a[1]).map(([name, val], i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "5px 0" }}>
+            <span style={{ color: "#f8fafc" }}>{i+1}. {name}</span>
+            <span style={{ color: "#60a5fa", fontWeight: "600" }}>{val.toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
 
-        <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
-          <MapController center={[21.5433, 39.1728]} />
+      {/* 🗺️ Map Container: شاشة كاملة */}
+      <div style={{ height: "100%", width: "100%" }} ref={mapRef}>
+        <MapContainer center={[21.5433, 39.1728]} zoom={12} style={{ height: "100%", width: "100%" }} zoomControl={false}>
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+          <MapController center={[21.5433, 39.1728]} />
+          
           {points.map((p) => (
-            <Marker key={p.id} position={[p.lat, p.lng]} icon={createNumberedIcon(p.id)}>
-              <Tooltip sticky>
-                <div style={{ textAlign: "right", fontSize: "12px", padding: "5px" }}>
-                  <strong style={{ color: "#3b82f6" }}>{p.name}</strong><br/>
-                  📍 حي: {p.district}<br/>
-                  💰 المبيع: {p.revenue.toLocaleString()} ر.س
-                </div>
-              </Tooltip>
-            </Marker>
+            <React.Fragment key={p.id}>
+              <Circle 
+                center={[p.lat, p.lng]} 
+                radius={900} 
+                pathOptions={{ fillColor: getHeatColor(districtSales[p.district]), color: "transparent", fillOpacity: 0.4 }} 
+              />
+              <Marker position={[p.lat, p.lng]} icon={createNumberedIcon(p.id)}>
+                <Tooltip sticky>
+                  <div style={{ textAlign: "right", color: "#1e293b", fontSize: "12px" }}>
+                    <strong>{p.name}</strong><br/>
+                    📍 حي {p.district}<br/>
+                    💰 المبيعات: {p.revenue.toLocaleString()} ر.س
+                  </div>
+                </Tooltip>
+              </Marker>
+            </React.Fragment>
           ))}
         </MapContainer>
       </div>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div style={{ position: "absolute", top: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 3000, background: "#fbbf24", color: "#000", padding: "5px 15px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", boxShadow: "0 4px 15px rgba(251, 191, 36, 0.4)" }}>
+          جاري المعالجة: {processedCount}
+        </div>
+      )}
     </div>
   );
 }
