@@ -73,11 +73,11 @@ export default function App() {
   };
 
   return (
-    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, fontFamily: "sans-serif", overflow: "hidden" }}>
+    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "relative", fontFamily: "sans-serif", overflow: "hidden" }}>
       
-      {/* الهيدر العلوي */}
-      <div id="ui-top" style={{ position: "absolute", top: 0, width: "100%", zIndex: 5000, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.85)", boxSizing: "border-box" }}>
-        <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "900" }}>VISIONARY MAP</div>
+      {/* الواجهة العلوية */}
+      <div id="ui-top" style={{ position: "absolute", top: 0, left: 0, width: "100%", zIndex: 1000, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.8)", boxSizing: "border-box" }}>
+        <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "900" }}>VISIONARY MAP</div>
         <div style={{ display: "flex", gap: "8px", direction: "rtl" }}>
           <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
             رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
@@ -88,16 +88,16 @@ export default function App() {
         </div>
       </div>
 
-      {/* زر التقرير العائم */}
+      {/* زر التقرير العائم - تم تحسين مكانه للجوال */}
       {Object.keys(districtsData).length > 0 && !showReport && (
-        <div style={{ position: "absolute", bottom: "40px", width: "100%", display: "flex", justifyContent: "center", zIndex: 5000 }}>
-          <button id="report-btn" onClick={() => setShowReport(true)} style={{ background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "14px 25px", borderRadius: "30px", fontWeight: "bold", fontSize: "14px", boxShadow: "0 0 25px rgba(0,0,0,0.8)", cursor: "pointer" }}>
-            ▲ عرض إحصائيات العملاء
+        <div style={{ position: "absolute", bottom: "50px", left: 0, width: "100%", display: "flex", justifyContent: "center", zIndex: 1000 }}>
+          <button id="report-btn" onClick={() => setShowReport(true)} style={{ background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "15px 30px", borderRadius: "50px", fontWeight: "bold", fontSize: "16px", boxShadow: "0 5px 20px rgba(0,0,0,0.5)", cursor: "pointer", pointerEvents: "auto" }}>
+            📊 عرض الإحصائيات
           </button>
         </div>
       )}
 
-      {/* نافذة التقرير - مصممة لتعمل على الجوال بالوضع الطولي */}
+      {/* نافذة التقرير - تغطية كاملة (Full Screen Overlay) */}
       {showReport && (
         <div style={{ 
           position: "fixed", 
@@ -105,38 +105,48 @@ export default function App() {
           left: 0, 
           width: "100%", 
           height: "100%", 
-          zIndex: 6000, 
-          background: "rgba(10,10,10,0.98)", 
+          zIndex: 9999, 
+          background: "#000000", 
           display: "flex", 
           flexDirection: "column", 
-          padding: "env(safe-area-inset-top) 20px 20px 20px", 
-          direction: "rtl",
-          boxSizing: "border-box"
+          direction: "rtl"
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", marginTop: "10px" }}>
+          {/* رأس التقرير ثابت في الأعلى */}
+          <div style={{ padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#111", borderBottom: "1px solid #333" }}>
             <h2 style={{ color: "#00f2ff", margin: 0, fontSize: "20px" }}>تقرير المبيعات</h2>
-            <button onClick={() => setShowReport(false)} style={{ background: "#ff4444", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: "bold" }}>إغلاق X</button>
+            <button onClick={() => setShowReport(false)} style={{ background: "#ff4444", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: "bold", fontSize: "16px" }}>إغلاق ✕</button>
           </div>
           
-          <div style={{ flex: 1, overflowY: "auto", color: "white", paddingBottom: "30px" }}>
-            <div style={{ background: "#10b981", padding: "15px", borderRadius: "10px", textAlign: "center", marginBottom: "20px", fontSize: "18px", fontWeight: "bold" }}>
+          {/* محتوى التقرير قابل للتمرير */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px", WebkitOverflowScrolling: "touch" }}>
+            <div style={{ background: "#10b981", padding: "20px", borderRadius: "15px", textAlign: "center", marginBottom: "25px", fontSize: "20px", fontWeight: "bold", color: "#fff" }}>
               إجمالي المبيعات: {totalSales.toLocaleString()} SAR
             </div>
-            {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
-              <div key={name} style={{ marginBottom: "15px", background: "rgba(255,255,255,0.05)", padding: "12px", borderRadius: "10px" }}>
-                <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "bold", borderBottom: "1px solid #333", pb: "5px", mb: "5px" }}>حي {name} ({data.clients.length})</div>
-                {data.clients.map((c, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.9, marginTop: "5px" }}>
-                    <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
+            
+            {Object.entries(districtsData)
+              .sort((a,b) => b[1].total - a[1].total)
+              .map(([name, data]) => (
+                <div key={name} style={{ marginBottom: "20px", background: "#111", border: "1px solid #222", padding: "15px", borderRadius: "12px" }}>
+                  <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "bold", marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                    <span>حي {name}</span>
+                    <span style={{ fontSize: "14px", color: "#888" }}>{data.clients.length} عملاء</span>
                   </div>
-                ))}
-              </div>
+                  {data.clients.map((c, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#eee", padding: "5px 0", borderTop: "1px solid #222" }}>
+                      <span>{c.name}</span>
+                      <span style={{ fontWeight: "bold" }}>{c.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: "10px", textAlign: "left", color: "#10b981", fontWeight: "bold", fontSize: "15px" }}>
+                    المجموع: {data.total.toLocaleString()}
+                  </div>
+                </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* الخريطة */}
+      {/* الخريطة - تأخذ الخلفية بالكامل */}
       <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100vh", width: "100vw", zIndex: 1 }} zoomControl={false}>
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {Object.entries(districtsData).map(([name, data]) => (
@@ -144,7 +154,7 @@ export default function App() {
             <CircleMarker center={[data.lat, data.lng]} radius={8} pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 2, fillOpacity: 1 }}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent className="tp">
                 <div style={{ color: "#FFFF00", fontSize: "14px", fontWeight: "900", textShadow: "2px 2px 0 #000" }}>
-                  {name} {data.clients.length > 1 ? `- ${data.clients.length}` : ""}
+                  {name}
                 </div>
               </Tooltip>
             </CircleMarker>
@@ -152,11 +162,12 @@ export default function App() {
           </React.Fragment>
         ))}
       </MapContainer>
-      
+
       <style>{`
-        .tp{background:transparent!important;border:none!important;box-shadow:none!important;}
-        .tp:before{border:none!important;}
-        body { margin: 0; padding: 0; }
+        .tp { background: transparent !important; border: none !important; box-shadow: none !important; }
+        .tp:before { border: none !important; }
+        .leaflet-container { background: #000 !important; }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; }
       `}</style>
     </div>
   );
