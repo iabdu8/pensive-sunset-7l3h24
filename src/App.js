@@ -5,25 +5,22 @@ import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
 const JEDDAH_COORDS = {
-  "الشاطئ": [21.6033, 39.1066], 
-  "السليمانية": [21.4955, 39.2455],
+  "الشاطئ": [21.6033, 39.1066], "السليمانية": [21.4955, 39.2455],
   "المرجان": [21.6668, 39.1086], "البساتين": [21.6853, 39.1321],
   "المحمدية": [21.6441, 39.1444], "النعيم": [21.6212, 39.1554],
   "النهضة": [21.6111, 39.1289], "الزهراء": [21.5877, 39.1311],
   "السلامة": [21.5899, 39.1524], "الروضة": [21.5599, 39.1488],
   "الخالدية": [21.5434, 39.1364], "أبحر الشمالية": [21.7516, 39.1301],
   "أبحر الجنوبية": [21.7115, 39.1190], "الحمدانية": [21.7656, 39.1977],
-  "الصفا": [21.5833, 39.2023], "المروة": [21.6166, 39.2055],
-  "الفيصلية": [21.5644, 39.1766], "السامر": [21.5950, 39.2300],
-  "التيسير": [21.5600, 39.2500], "البلد": [21.4847, 39.1867]
+  "الصفا": [21.5833, 39.2023], "المروة": [21.6166, 39.2055]
 };
 
-const robustClean = (str) => {
-  if (!str) return "";
-  let s = str.toString().trim();
-  if (s.includes("شاط") || s.includes("اطي")) return "الشاطئ";
-  if (s.includes("سليماني")) return "السليمانية";
-  return s.replace(/حي\s+/g, "").replace(/^ال/g, "").replace(/[أإآ]/g, "ا").replace(/[ىئئي]$/g, "ي").replace(/ة$/g, "ه").replace(/\s+/g, "");
+const robustClean = (s) => {
+  if (!s) return "";
+  let str = s.toString().trim();
+  if (str.includes("شاط")) return "الشاطئ";
+  if (str.includes("سليماني")) return "السليمانية";
+  return str.replace(/حي\s+/g, "").replace(/^ال/g, "").replace(/[أإآ]/g, "ا").replace(/[ىئئي]$/g, "ي").replace(/ة$/g, "ه").replace(/\s+/g, "");
 };
 
 export default function App() {
@@ -63,66 +60,65 @@ export default function App() {
   };
 
   const capture = () => {
-    const ui = document.getElementById("ui-top-bar");
-    const report = document.getElementById("report-section");
-    if (ui) ui.style.display = "none";
-    if (report) report.style.display = "none";
-    
+    const ui = document.getElementById("ui-container");
+    ui.style.display = "none";
     html2canvas(fullScreenRef.current).then(canvas => {
       const a = document.createElement("a");
-      a.download = "Visionary_Map.png"; a.href = canvas.toDataURL(); a.click();
-      if (ui) ui.style.display = "flex";
-      if (report) report.style.display = "block";
+      a.download = "Map.png"; a.href = canvas.toDataURL(); a.click();
+      ui.style.display = "block";
     });
   };
 
   return (
-    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top: 0, left: 0, direction: "rtl", fontFamily: "sans-serif", overflow: "hidden" }}>
+    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, direction: "rtl", fontFamily: "sans-serif" }}>
       
-      {/* شريط التحكم: الاسم يمين، الأزرار يسار */}
-      <div id="ui-top-bar" style={{ position: "absolute", top: 0, left: 0, width: "100%", zIndex: 99999, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.8)", boxSizing: "border-box" }}>
-        {/* اليمين */}
-        <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900" }}>VISIONARY MAP</div>
+      {/* واجهة التحكم */}
+      <div id="ui-container" style={{ position: "absolute", inset: 0, zIndex: 10000, pointerEvents: "none" }}>
         
-        {/* اليسار */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <label style={{ background: "#2563eb", color: "#fff", padding: "8px 15px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>
-            رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
-          </label>
-          {Object.keys(districtsData).length > 0 && (
-            <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 15px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>حفظ</button>
-          )}
+        {/* الهيدر: الاسم يسار، الأزرار يمين */}
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 15px", background: "rgba(0,0,0,0.75)", pointerEvents: "auto", flexDirection: "row-reverse" }}>
+          {/* اليمين (برمجياً هو النهاية بسبب Row-Reverse) */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
+              رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+            </label>
+            {Object.keys(districtsData).length > 0 && (
+              <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>حفظ</button>
+            )}
+          </div>
+          {/* اليسار */}
+          <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900", letterSpacing: "1px" }}>VISIONARY MAP</div>
         </div>
+
+        {/* التقرير المحكم للجوال */}
+        {Object.keys(districtsData).length > 0 && (
+          <div style={{ position: "absolute", bottom: "25px", left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: "360px", pointerEvents: "auto" }}>
+            <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px", borderRadius: "12px", fontWeight: "bold", boxShadow: "0 5px 20px #000" }}>
+              {showReport ? "▼ إغلاق التقرير" : "▲ عرض إحصائيات العملاء"}
+            </button>
+            
+            {showReport && (
+              <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "10px", maxHeight: "45vh", overflowY: "auto", border: "1px solid #333", color: "white", boxShadow: "0 0 20px #000" }}>
+                <div style={{ color: "#10b981", fontSize: "17px", fontWeight: "bold", borderBottom: "1px solid #444", marginBottom: "10px", paddingBottom: "5px" }}>
+                  إجمالي المبيعات: {totalSales.toLocaleString()} SAR
+                </div>
+                {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
+                  <div key={name} style={{ marginBottom: "12px", borderBottom: "1px solid #222" }}>
+                    <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length})</div>
+                    {data.clients.map((c, i) => (
+                      <div key={i} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", opacity: 0.9 }}>
+                        <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* التقرير أسفل الشاشة */}
-      {Object.keys(districtsData).length > 0 && (
-        <div id="report-section" style={{ position: "absolute", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 99999, width: "90%", maxWidth: "350px" }}>
-          <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px", borderRadius: "12px", fontSize: "14px", fontWeight: "bold", boxShadow: "0 0 15px #000" }}>
-            {showReport ? "▼ إغلاق التقرير" : "▲ عرض إحصائيات العملاء"}
-          </button>
-          
-          {showReport && (
-            <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "10px", maxHeight: "45vh", overflowY: "auto", border: "1px solid #333", color: "white" }}>
-              <div style={{ color: "#10b981", fontSize: "18px", fontWeight: "bold", borderBottom: "1px solid #444", paddingBottom: "10px", marginBottom: "10px", textAlign: "center" }}>
-                إجمالي المبيعات: {totalSales.toLocaleString()} SAR
-              </div>
-              {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
-                <div key={name} style={{ marginBottom: "15px", borderBottom: "1px solid #222", paddingBottom: "8px" }}>
-                  <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length} معاملات)</div>
-                  {data.clients.map((c, i) => (
-                    <div key={i} style={{ fontSize: "12px", display: "flex", justifyContent: "space-between", opacity: 0.9 }}>
-                      <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+      <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%", zIndex: 1 }} zoomControl={false}>
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {Object.entries(districtsData).map(([name, data]) => (
           <React.Fragment key={name}>
