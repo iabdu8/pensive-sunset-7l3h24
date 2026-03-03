@@ -149,3 +149,12 @@ export default function App() {
               </Marker>
             </React.Fragment>
           ))}
+        </MapContainer>
+      </div>
+
+      {loading && (
+        <div style={{ position: "absolute", top: "75px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#fbbf24", color: "#000", padding: "6px 18px", borderRadius: "20px", fontWeight: "bold", fontSize: "12px" }}>جاري تحليل البيانات... {points.length}</div>
+      )}
+    </div>
+  );
+}
