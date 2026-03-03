@@ -4,7 +4,6 @@ import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
-// الإحداثيات الدقيقة لجدة
 const JEDDAH_COORDS = {
   "الشاطئ": [21.6033, 39.1066], 
   "السليمانية": [21.4955, 39.2455],
@@ -22,7 +21,6 @@ const JEDDAH_COORDS = {
 const robustClean = (str) => {
   if (!str) return "";
   let s = str.toString().trim();
-  // معالجة "الشاطئ" و "السليمانية" لضمان عدم اللخبطة
   if (s.includes("شاط") || s.includes("اطي")) return "الشاطئ";
   if (s.includes("سليماني")) return "السليمانية";
   return s.replace(/حي\s+/g, "").replace(/^ال/g, "").replace(/[أإآ]/g, "ا").replace(/[ىئئي]$/g, "ي").replace(/ة$/g, "ه").replace(/\s+/g, "");
@@ -65,52 +63,56 @@ export default function App() {
   };
 
   const capture = () => {
-    const ui = document.getElementById("main-ui-layer");
-    ui.style.display = "none";
-    html2canvas(fullScreenRef.current, { useCORS: true }).then(canvas => {
+    const ui = document.getElementById("ui-top-bar");
+    const report = document.getElementById("report-section");
+    if (ui) ui.style.display = "none";
+    if (report) report.style.display = "none";
+    
+    html2canvas(fullScreenRef.current).then(canvas => {
       const a = document.createElement("a");
       a.download = "Visionary_Map.png"; a.href = canvas.toDataURL(); a.click();
-      ui.style.display = "block";
+      if (ui) ui.style.display = "flex";
+      if (report) report.style.display = "block";
     });
   };
 
   return (
     <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top: 0, left: 0, direction: "rtl", fontFamily: "sans-serif", overflow: "hidden" }}>
       
-      {/* طبقة التحكم - اسم الموقع يمين والأزرار يسار */}
-      <div id="main-ui-layer" style={{ position: "absolute", top: 0, left: 0, width: "100%", zIndex: 100000 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.7)" }}>
-          {/* اليمين: اسم الموقع */}
-          <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900" }}>VISIONARY MAP</div>
-          
-          {/* اليسار: الرفع والحفظ */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-               رفع <input type="file" onChange={handleUpload} style={{ display: "none" }} />
-            </label>
-            {Object.keys(districtsData).length > 0 && (
-              <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>حفظ</button>
-            )}
-          </div>
+      {/* شريط التحكم: الاسم يمين، الأزرار يسار */}
+      <div id="ui-top-bar" style={{ position: "absolute", top: 0, left: 0, width: "100%", zIndex: 99999, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.8)", boxSizing: "border-box" }}>
+        {/* اليمين */}
+        <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900" }}>VISIONARY MAP</div>
+        
+        {/* اليسار */}
+        <div style={{ display: "flex", gap: "10px" }}>
+          <label style={{ background: "#2563eb", color: "#fff", padding: "8px 15px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>
+            رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+          </label>
+          {Object.keys(districtsData).length > 0 && (
+            <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 15px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>حفظ</button>
+          )}
         </div>
       </div>
 
-      {/* التقرير أسفل الشاشة - z-index عالي جداً للجوال */}
+      {/* التقرير أسفل الشاشة */}
       {Object.keys(districtsData).length > 0 && (
-        <div style={{ position: "absolute", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 100001, width: "90%", maxWidth: "340px" }}>
-          <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", boxShadow: "0 0 20px #000" }}>
-            {showReport ? "▼ إغلاق التقرير" : "▲ عرض تفاصيل الأحياء والعملاء"}
+        <div id="report-section" style={{ position: "absolute", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 99999, width: "90%", maxWidth: "350px" }}>
+          <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px", borderRadius: "12px", fontSize: "14px", fontWeight: "bold", boxShadow: "0 0 15px #000" }}>
+            {showReport ? "▼ إغلاق التقرير" : "▲ عرض إحصائيات العملاء"}
           </button>
           
           {showReport && (
-            <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "10px", maxHeight: "50vh", overflowY: "auto", border: "1px solid #333", color: "white" }}>
-              <div style={{ color: "#10b981", fontSize: "18px", fontWeight: "bold", borderBottom: "1px solid #444", paddingBottom: "8px", marginBottom: "10px" }}>الإجمالي: {totalSales.toLocaleString()} SAR</div>
+            <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "10px", maxHeight: "45vh", overflowY: "auto", border: "1px solid #333", color: "white" }}>
+              <div style={{ color: "#10b981", fontSize: "18px", fontWeight: "bold", borderBottom: "1px solid #444", paddingBottom: "10px", marginBottom: "10px", textAlign: "center" }}>
+                إجمالي المبيعات: {totalSales.toLocaleString()} SAR
+              </div>
               {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
-                <div key={name} style={{ marginBottom: "12px", borderBottom: "1px solid #222", paddingBottom: "5px" }}>
-                  <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length})</div>
+                <div key={name} style={{ marginBottom: "15px", borderBottom: "1px solid #222", paddingBottom: "8px" }}>
+                  <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length} معاملات)</div>
                   {data.clients.map((c, i) => (
-                    <div key={i} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", opacity: 0.8 }}>
-                      <span>- {c.name}</span><span>{c.amount.toLocaleString()}</span>
+                    <div key={i} style={{ fontSize: "12px", display: "flex", justifyContent: "space-between", opacity: 0.9 }}>
+                      <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
