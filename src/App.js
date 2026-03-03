@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
+// --- الإحداثيات الدقيقة ---
 const JEDDAH_COORDS = {
   "الشاطئ": [21.6033, 39.1066], 
   "السليمانية": [21.4955, 39.2455],
@@ -29,7 +30,7 @@ const robustClean = (str) => {
 export default function App() {
   const [districtsData, setDistrictsData] = useState({});
   const [totalSales, setTotalSales] = useState(0);
-  const [showReport, setShowReport] = useState(false); // مغلق افتراضياً للجوال
+  const [showReport, setShowReport] = useState(false);
   const fullScreenRef = useRef(null);
 
   const handleUpload = (e) => {
@@ -62,45 +63,59 @@ export default function App() {
     reader.readAsBinaryString(file);
   };
 
+  const capture = () => {
+    const ui = document.getElementById("ui-layer");
+    ui.style.display = "none";
+    html2canvas(fullScreenRef.current).then(canvas => {
+      const a = document.createElement("a");
+      a.download = "Visionary_Map.png";
+      a.href = canvas.toDataURL();
+      a.click();
+      ui.style.display = "block";
+    });
+  };
+
   return (
     <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", direction: "rtl", fontFamily: "sans-serif" }}>
       
-      {/* الهيدر المحسن: اسم الموقع والأزرار */}
-      <div id="ui-header" style={{ position: "absolute", top: "0", left: "0", width: "100%", zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", padding: "10px", gap: "10px" }}>
-        <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900", width: "100%", textAlign: "left", paddingLeft: "15px" }}>VISIONARY MAP</div>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <label style={{ background: "#2563eb", color: "#fff", padding: "8px 15px", borderRadius: "20px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
-             رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
-          </label>
-          {Object.keys(districtsData).length > 0 && (
-            <button onClick={() => {
-              document.getElementById("ui-header").style.display="none";
-              document.getElementById("report-box").style.display="none";
-              html2canvas(fullScreenRef.current).then(c => {
-                const a = document.createElement("a"); a.download="Map.png"; a.href=c.toDataURL(); a.click();
-                document.getElementById("ui-header").style.display="flex";
-                document.getElementById("report-box").style.display="block";
-              });
-            }} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 15px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold" }}>📸 حفظ</button>
-          )}
+      {/* طبقة التحكم - موزعة بشكل صحيح للجوال */}
+      <div id="ui-layer" style={{ position: "absolute", top: "0", left: "0", width: "100%", zIndex: 2000 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "15px", background: "rgba(0,0,0,0.5)" }}>
+          <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "900" }}>VISIONARY MAP</div>
+          <div style={{ display: "flex", gap: "5px" }}>
+            <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "10px", cursor: "pointer", fontSize: "11px", fontWeight: "bold" }}>
+               رفع <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+            </label>
+            {Object.keys(districtsData).length > 0 && (
+              <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "10px", fontSize: "11px", fontWeight: "bold" }}>📸 حفظ</button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* التقرير القابل للإخفاء */}
-      <div id="report-box" style={{ position: "absolute", bottom: "20px", right: "15px", zIndex: 1000, width: "240px" }}>
-        <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "1px solid #00f2ff", padding: "8px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-          {showReport ? "▼ إخفاء الإحصائيات" : "▲ عرض الإحصائيات"}
-        </button>
-        {showReport && Object.keys(districtsData).length > 0 && (
-          <div style={{ background: "rgba(10, 15, 30, 0.95)", padding: "12px", borderRadius: "10px", marginTop: "5px", color: "white", maxHeight: "40vh", overflowY: "auto", border: "1px solid #333" }}>
-            <div style={{ color: "#10b981", fontSize: "16px", fontWeight: "bold", marginBottom: "8px" }}>إجمالي: {totalSales.toLocaleString()}</div>
-            {Object.entries(districtsData).map(([name, data]) => (
-              <div key={name} style={{ marginBottom: "8px", fontSize: "11px", borderBottom: "1px solid #222" }}>
-                <div style={{ color: "#00f2ff" }}>حي {name} ({data.clients.length})</div>
-                {data.clients.map((c, i) => <div key={i} style={{ opacity: 0.7 }}>- {c.name}: {c.amount}</div>)}
+      {/* التقرير - أسفل الشاشة مع z-index عالٍ */}
+      <div style={{ position: "absolute", bottom: "20px", left: "10px", right: "10px", zIndex: 2500 }}>
+        {Object.keys(districtsData).length > 0 && (
+          <>
+            <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "1px solid #00f2ff", padding: "10px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold" }}>
+              {showReport ? "▼ إغفاء التقرير" : "▲ عرض التقرير والتفاصيل"}
+            </button>
+            {showReport && (
+              <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "8px", maxHeight: "40vh", overflowY: "auto", border: "1px solid #333", color: "white" }}>
+                <div style={{ color: "#10b981", fontSize: "18px", fontWeight: "bold", marginBottom: "10px", borderBottom: "1px solid #444" }}>إجمالي: {totalSales.toLocaleString()} SAR</div>
+                {Object.entries(districtsData).map(([name, data]) => (
+                  <div key={name} style={{ marginBottom: "12px", paddingBottom: "5px", borderBottom: "1px solid #222" }}>
+                    <div style={{ color: "#00f2ff", fontWeight: "bold", fontSize: "13px" }}>حي {name} ({data.clients.length})</div>
+                    {data.clients.map((c, i) => (
+                      <div key={i} style={{ fontSize: "11px", opacity: 0.8, display: "flex", justifyContent: "space-between" }}>
+                        <span>- {c.name}</span><span>{c.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -108,18 +123,18 @@ export default function App() {
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {Object.entries(districtsData).map(([name, data]) => (
           <React.Fragment key={name}>
-            <CircleMarker center={[data.lat, data.lng]} radius={7} pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 1, fillOpacity: 1 }}>
+            <CircleMarker center={[data.lat, data.lng]} radius={8} pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 2, fillOpacity: 1 }}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent className="tp">
-                <div style={{ color: "#FFFF00", fontSize: "13px", fontWeight: "900", textShadow: "2px 2px 0 #000" }}>
+                <div style={{ color: "#FFFF00", fontSize: "14px", fontWeight: "900", textShadow: "2px 2px 0 #000" }}>
                   {name} {data.clients.length > 1 ? `- ${data.clients.length}` : ""}
                 </div>
               </Tooltip>
             </CircleMarker>
-            <Circle center={[data.lat, data.lng]} radius={1200} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.2 }} />
+            <Circle center={[data.lat, data.lng]} radius={1500} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.25 }} />
           </React.Fragment>
         ))}
       </MapContainer>
-      <style>{`.tp{background:transparent!important;border:none!important;box-shadow:none!important;}`}</style>
+      <style>{`.tp{background:transparent!important;border:none!important;box-shadow:none!important;}.tp:before{border:none!important;}`}</style>
     </div>
   );
 }
