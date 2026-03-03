@@ -73,14 +73,11 @@ export default function App() {
   };
 
   return (
-    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, fontFamily: "sans-serif" }}>
+    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, fontFamily: "sans-serif", overflow: "hidden" }}>
       
       {/* الهيدر العلوي: الاسم يسار والأزرار يمين */}
-      <div id="ui-top" style={{ position: "absolute", top: 0, width: "100%", zIndex: 1000, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.8)", boxSizing: "border-box" }}>
-        {/* اليسار (اسم الموقع) */}
+      <div id="ui-top" style={{ position: "absolute", top: 0, width: "100%", zIndex: 5000, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.85)", boxSizing: "border-box" }}>
         <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "900" }}>VISIONARY MAP</div>
-        
-        {/* اليمين (أزرار التحكم) */}
         <div style={{ display: "flex", gap: "8px", direction: "rtl" }}>
           <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
             رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
@@ -91,22 +88,24 @@ export default function App() {
         </div>
       </div>
 
-      {/* زر فتح التقرير (يظهر فقط بعد رفع الملف) */}
+      {/* زر التقرير - وضعته في مكان ثابت ومرفوع قليلاً ليظهر في كل أوضاع الجوال */}
       {Object.keys(districtsData).length > 0 && !showReport && (
-        <button id="report-btn" onClick={() => setShowReport(true)} style={{ position: "absolute", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px 25px", borderRadius: "30px", fontWeight: "bold", boxShadow: "0 0 20px #000" }}>
-          ▲ عرض إحصائيات العملاء
-        </button>
+        <div style={{ position: "absolute", bottom: "40px", width: "100%", display: "flex", justifyContent: "center", zIndex: 5000 }}>
+          <button id="report-btn" onClick={() => setShowReport(true)} style={{ background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "14px 25px", borderRadius: "30px", fontWeight: "bold", fontSize: "14px", boxShadow: "0 0 25px rgba(0,0,0,0.8)", cursor: "pointer", pointerEvents: "auto" }}>
+            ▲ عرض إحصائيات العملاء
+          </button>
+        </div>
       )}
 
-      {/* نافذة التقرير (Modal) تظهر فوق كل شيء */}
+      {/* نافذة التقرير الكاملة */}
       {showReport && (
-        <div style={{ position: "absolute", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.95)", display: "flex", flexDirection: "column", padding: "20px", direction: "rtl" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h2 style={{ color: "#00f2ff", margin: 0 }}>تقرير المبيعات</h2>
-            <button onClick={() => setShowReport(false)} style={{ background: "#ff4444", color: "#fff", border: "none", padding: "8px 15px", borderRadius: "8px", fontWeight: "bold" }}>إغلاق X</button>
+        <div style={{ position: "absolute", inset: 0, zIndex: 6000, background: "rgba(0,0,0,0.98)", display: "flex", flexDirection: "column", padding: "20px", direction: "rtl" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", marginTop: "10px" }}>
+            <h2 style={{ color: "#00f2ff", margin: 0, fontSize: "20px" }}>تقرير المبيعات</h2>
+            <button onClick={() => setShowReport(false)} style={{ background: "#ff4444", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: "bold" }}>إغلاق X</button>
           </div>
           
-          <div style={{ flex: 1, overflowY: "auto", color: "white" }}>
+          <div style={{ flex: 1, overflowY: "auto", color: "white", paddingBottom: "30px" }}>
             <div style={{ background: "#10b981", padding: "15px", borderRadius: "10px", textAlign: "center", marginBottom: "20px", fontSize: "18px", fontWeight: "bold" }}>
               إجمالي المبيعات: {totalSales.toLocaleString()} SAR
             </div>
@@ -124,7 +123,7 @@ export default function App() {
         </div>
       )}
 
-      <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%", zIndex: 1 }} zoomControl={false}>
+      <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100vh", width: "100vw", zIndex: 1 }} zoomControl={false}>
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {Object.entries(districtsData).map(([name, data]) => (
           <React.Fragment key={name}>
