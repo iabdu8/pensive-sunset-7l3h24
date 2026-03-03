@@ -4,8 +4,8 @@ import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
-// إحداثيات ثابتة ودقيقة 100% مستخرجة من قوقل ماب
-const JEDDAH_FIXED_COORDS = {
+// --- قاعدة بيانات الإحداثيات الدقيقة (تعديل يدوي لضمان عدم اللخبطة) ---
+const JEDDAH_COORDS = {
   "الشاطئ": [21.6033, 39.1066], 
   "السليمانية": [21.4955, 39.2455],
   "المرجان": [21.6668, 39.1086], 
@@ -28,14 +28,11 @@ const JEDDAH_FIXED_COORDS = {
   "البلد": [21.4847, 39.1867]
 };
 
-// دالة تنظيف فائقة القوة لضمان قراءة (الشاطئ) مهما كان الإملاء غلط في الإكسل
 const robustClean = (str) => {
   if (!str) return "";
   let s = str.toString().trim();
-  // إذا كان المستخدم كتب "الاطيء" أو "الشاطي" أو "شاطئ" نحولها جميعاً للشكل الموحد
   if (s.includes("شاط") || s.includes("اطي")) return "الشاطئ";
   if (s.includes("سليماني")) return "السليمانية";
-  
   return s.replace(/حي\s+/g, "").replace(/^ال/g, "").replace(/[أإآ]/g, "ا").replace(/[ىئئي]$/g, "ي").replace(/ة$/g, "ه").replace(/\s+/g, "");
 };
 
@@ -62,15 +59,15 @@ export default function App() {
         if (rawName) {
           sum += amount;
           const cleanedInput = robustClean(rawName);
-          const matchedKey = Object.keys(JEDDAH_FIXED_COORDS).find(k => robustClean(k) === cleanedInput);
-
+          const matchedKey = Object.keys(JEDDAH_COORDS).find(k => robustClean(k) === cleanedInput);
           const finalName = matchedKey || rawName;
+
           if (!temp[finalName]) {
-            const coords = JEDDAH_FIXED_COORDS[matchedKey] || [21.5433, 39.1728];
-            temp[finalName] = { total: 0, transactions: [], lat: coords[0], lng: coords[1] };
+            const coords = JEDDAH_COORDS[matchedKey] || [21.5433, 39.1728];
+            temp[finalName] = { total: 0, clients: [], lat: coords[0], lng: coords[1] };
           }
           temp[finalName].total += amount;
-          temp[finalName].transactions.push({ name: client, amount });
+          temp[finalName].clients.push({ name: client, amount });
         }
       });
       setDistrictsData(temp); setTotalSales(sum);
@@ -81,7 +78,7 @@ export default function App() {
   const capture = () => {
     document.getElementById("ui-controls").style.display = "none";
     html2canvas(fullScreenRef.current, { useCORS: true, backgroundColor: "#000" }).then(canvas => {
-      const a = document.createElement("a"); a.download = "Visionary_Map_Final.png"; a.href = canvas.toDataURL(); a.click();
+      const a = document.createElement("a"); a.download = "Visionary_Report.png"; a.href = canvas.toDataURL(); a.click();
       document.getElementById("ui-controls").style.display = "flex";
     });
   };
@@ -89,7 +86,7 @@ export default function App() {
   return (
     <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", direction: "rtl", fontFamily: "sans-serif" }}>
       
-      {/* استعادة اسم الموقع كما طلبت */}
+      {/* اسم الموقع ثابت */}
       <div style={{ position: "absolute", top: "25px", left: "25px", zIndex: 1000, color: "#00f2ff", fontSize: "22px", fontWeight: "900" }}>
         VISIONARY MAP
       </div>
@@ -101,14 +98,23 @@ export default function App() {
         <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "30px", cursor: "pointer", fontWeight: "bold" }}>📸 حفظ</button>
       </div>
 
-      <div style={{ position: "absolute", bottom: "30px", right: "20px", zIndex: 1000, width: "260px" }}>
+      <div style={{ position: "absolute", bottom: "30px", right: "20px", zIndex: 1000, width: "280px" }}>
         {Object.keys(districtsData).length > 0 && (
-          <div style={{ background: "rgba(10, 15, 30, 0.95)", padding: "15px", borderRadius: "15px", border: "1px solid #333", color: "white", maxHeight: "50vh", overflowY: "auto" }}>
-            <div style={{ color: "#10b981", fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>{totalSales.toLocaleString()} SAR</div>
+          <div style={{ background: "rgba(10, 15, 30, 0.95)", padding: "15px", borderRadius: "20px", border: "1px solid #333", color: "white", maxHeight: "60vh", overflowY: "auto" }}>
+            <div style={{ color: "#10b981", fontSize: "22px", fontWeight: "bold", marginBottom: "12px", borderBottom: "1px solid #10b981" }}>
+               إجمالي جدة: {totalSales.toLocaleString()} SAR
+            </div>
             {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
-              <div key={name} style={{ borderBottom: "1px solid #222", padding: "5px 0" }}>
-                <div style={{ color: "#00f2ff", fontSize: "13px", fontWeight: "bold" }}>حي {name}</div>
-                <div style={{ fontSize: "11px", opacity: 0.8 }}>{data.total.toLocaleString()} SAR</div>
+              <div key={name} style={{ marginBottom: "15px", background: "rgba(255,255,255,0.05)", padding: "8px", borderRadius: "10px" }}>
+                <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length})</div>
+                {data.clients.map((c, i) => (
+                  <div key={i} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", color: "#ccc" }}>
+                    <span>- {c.name}</span><span>{c.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div style={{ fontSize: "11px", color: "#10b981", textAlign: "left", fontWeight: "bold", marginTop: "4px" }}>
+                  المجموع: {data.total.toLocaleString()}
+                </div>
               </div>
             ))}
           </div>
@@ -119,12 +125,14 @@ export default function App() {
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {Object.entries(districtsData).map(([name, data]) => (
           <React.Fragment key={name}>
-            <CircleMarker center={[data.lat, data.lng]} radius={8} pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 2, fillOpacity: 1 }}>
+            <CircleMarker center={[data.lat, data.lng]} radius={10} pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 2, fillOpacity: 1 }}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent className="tp">
-                <div style={{ color: "#FFFF00", fontSize: "15px", fontWeight: "900", textShadow: "2px 2px 0 #000" }}>{name}</div>
+                <div style={{ color: "#FFFF00", fontSize: "16px", fontWeight: "900", textShadow: "3px 3px 0 #000" }}>
+                  {name} {data.clients.length > 1 ? `- ${data.clients.length}` : ""}
+                </div>
               </Tooltip>
             </CircleMarker>
-            <Circle center={[data.lat, data.lng]} radius={1500} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.25 }} />
+            <Circle center={[data.lat, data.lng]} radius={1600} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.25 }} />
           </React.Fragment>
         ))}
       </MapContainer>
