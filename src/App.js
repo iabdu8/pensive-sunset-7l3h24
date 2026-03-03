@@ -5,16 +5,25 @@ import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
+// أيقونة الماركر (النقطة) مع عداد العملاء
 const createCountIcon = (count) => {
   return L.divIcon({
-    html: `<div style="position: relative;"><div style="background: #00f2ff; width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 15px #00f2ff; border: 2px solid #fff;"></div><div style="position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: #ff4d4d; color: white; font-size: 11px; font-weight: bold; padding: 2px 7px; border-radius: 10px; border: 1px solid white; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.5);">${count}</div></div>`,
-    className: 'custom-count-icon', iconSize: [14, 14], iconAnchor: [7, 7]
+    html: `
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;">
+        <div style="background: #00f2ff; width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 15px #00f2ff, 0 0 5px #fff; border: 2px solid #fff;"></div>
+        <div style="position: absolute; top: -20px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 8px; border: 1px solid white; white-space: nowrap;">${count}</div>
+      </div>`,
+    className: 'custom-div-icon',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
   });
 };
 
 function MapController() {
   const map = useMap();
-  useEffect(() => { map.setView([21.5433, 39.1728], 11); }, [map]);
+  useEffect(() => {
+    map.setView([21.5433, 39.1728], 11);
+  }, [map]);
   return null;
 }
 
@@ -32,11 +41,13 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const data = XLSX.utils.sheet_to_json(XLSX.read(evt.target.result, { type: "binary" }).Sheets[XLSX.read(evt.target.result, { type: "binary" }).SheetNames[0]]);
-      let sum = 0; let tempDistricts = {};
+      let sum = 0; 
+      let tempDistricts = {};
       const JEDDAH_VIEWBOX = "39.09,21.15,39.35,21.90"; 
 
       for (let i = 0; i < data.length; i++) {
-        const row = data[i]; const keys = Object.keys(row);
+        const row = data[i]; 
+        const keys = Object.keys(row);
         const distKey = keys.find(k => k.includes("حي") || k.includes("District"));
         const saleKey = keys.find(k => k.includes("مبيع") || k.includes("مبلغ"));
         let dist = String(row[distKey] || "").trim();
@@ -48,19 +59,19 @@ export default function App() {
           if (!tempDistricts[dist]) tempDistricts[dist] = { total: 0, transactions: [], lat: null, lng: null };
           tempDistricts[dist].total += rev;
           tempDistricts[dist].transactions.push({ name: clientName, amount: rev });
+          
           if (!tempDistricts[dist].lat) {
             try {
-              const searchQuery = `حي ${dist} جدة السعودية`;
-              const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&viewbox=${JEDDAH_VIEWBOX}&bounded=1`);
+              const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("حي " + dist + " جدة")}&viewbox=${JEDDAH_VIEWBOX}&bounded=1`);
               const json = await res.json();
-              if (json && json.length > 0) {
+              if (json && json[0]) {
                 tempDistricts[dist].lat = parseFloat(json[0].lat);
                 tempDistricts[dist].lng = parseFloat(json[0].lon);
               }
             } catch (err) {}
           }
           setDistrictsData({...tempDistricts});
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 500));
         }
       }
       setTotalSales(sum); setLoading(false);
@@ -71,11 +82,12 @@ export default function App() {
   return (
     <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top: 0, left: 0, direction: "rtl", fontFamily: "sans-serif" }}>
       
-      <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 10000, color: "#00f2ff", fontSize: "18px", fontWeight: "900", textShadow: "0 0 15px rgba(0,242,255,0.7)", letterSpacing: "1px", fontStyle: "italic" }}>
+      {/* Visionary Map Header */}
+      <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 1000, color: "#00f2ff", fontSize: "20px", fontWeight: "900", textShadow: "0 0 15px rgba(0,242,255,0.8)", fontStyle: "italic" }}>
         VISIONARY MAP
       </div>
 
-      <div id="action-buttons" style={{ position: "absolute", top: "15px", width: "100%", zIndex: 9999, display: "flex", justifyContent: "center", gap: "10px" }}>
+      <div id="action-buttons" style={{ position: "absolute", top: "15px", width: "100%", zIndex: 1000, display: "flex", justifyContent: "center", gap: "10px" }}>
         <label style={{ background: "#2563eb", color: "#fff", padding: "10px 20px", borderRadius: "30px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}>
           ارفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
         </label>
@@ -84,26 +96,27 @@ export default function App() {
             const btns = document.getElementById("action-buttons");
             btns.style.display = "none";
             html2canvas(fullScreenRef.current, { useCORS: true, backgroundColor: "#000", scale: 2 }).then(canvas => {
-              let a = document.createElement("a"); a.download = `Visionary_Report.png`; a.href = canvas.toDataURL(); a.click();
+              let a = document.createElement("a"); a.download = `Report.png`; a.href = canvas.toDataURL(); a.click();
               btns.style.display = "flex";
             });
           }} style={{ background: "#10b981", border: "none", color: "#fff", padding: "10px 20px", borderRadius: "30px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}>📸 حفظ</button>
         )}
       </div>
 
-      <div style={{ position: "absolute", bottom: "25px", right: "15px", zIndex: 9999, width: showReport ? "240px" : "120px", transition: "all 0.4s ease" }}>
+      {/* التقرير القابل للإخفاء */}
+      <div style={{ position: "absolute", bottom: "25px", right: "15px", zIndex: 1000, width: showReport ? "240px" : "120px", transition: "all 0.3s ease" }}>
         <button onClick={() => setShowReport(!showReport)} style={{ background: "#1e293b", color: "#00f2ff", border: "1px solid #00f2ff", width: "100%", borderRadius: "10px", padding: "8px", cursor: "pointer", fontSize: "11px", fontWeight: "bold", marginBottom: "8px" }}>
           {showReport ? "▼ إخفاء التقرير" : "▲ إظهار التقرير"}
         </button>
         {showReport && (
-          <div style={{ background: "rgba(10, 15, 30, 0.92)", backdropFilter: "blur(12px)", padding: "15px", borderRadius: "20px", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "50vh", overflowY: "auto" }}>
+          <div style={{ background: "rgba(10, 15, 30, 0.9)", backdropFilter: "blur(10px)", padding: "15px", borderRadius: "15px", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "50vh", overflowY: "auto" }}>
             <div style={{ color: "#94a3b8", fontSize: "10px" }}>TOTAL SALES</div>
-            <div style={{ color: "#10b981", fontWeight: "bold", fontSize: "20px", borderBottom: "1px solid #334155", paddingBottom: "8px", marginBottom: "10px" }}>{totalSales.toLocaleString()} <small style={{fontSize: "10px"}}>SAR</small></div>
+            <div style={{ color: "#10b981", fontWeight: "bold", fontSize: "20px", borderBottom: "1px solid #334155", paddingBottom: "5px" }}>{totalSales.toLocaleString()} <small style={{fontSize: "10px"}}>SAR</small></div>
             {Object.entries(districtsData).sort((a,b)=>b[1].total-a[1].total).map(([distName, data]) => (
-              <div key={distName} style={{ marginBottom: "12px" }}>
-                <div style={{ fontSize: "13px", color: "#3b82f6", fontWeight: "bold" }}>حي {distName}</div>
+              <div key={distName} style={{ marginTop: "10px" }}>
+                <div style={{ fontSize: "12px", color: "#3b82f6", fontWeight: "bold" }}>حي {distName}</div>
                 {data.transactions.map((t, idx) => (
-                  <div key={idx} style={{ fontSize: "10px", color: "#cbd5e1", display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
+                  <div key={idx} style={{ fontSize: "10px", color: "#eee", display: "flex", justifyContent: "space-between" }}>
                     <span>• {t.name}</span><span style={{color: "#10b981"}}>{t.amount.toLocaleString()}</span>
                   </div>
                 ))}
@@ -114,23 +127,28 @@ export default function App() {
       </div>
 
       <div style={{ height: "100%", width: "100%" }}>
-        <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+        <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%", background: "#000" }} zoomControl={false}>
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-          <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png" opacity={0.3} />
           <MapController />
           {Object.entries(districtsData).map(([name, data], idx) => (
             data.lat && (
               <React.Fragment key={idx}>
-                <Circle center={[data.lat, data.lng]} radius={1000} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.35 }} />
+                {/* الدائرة الحمراء */}
+                <Circle center={[data.lat, data.lng]} radius={1200} pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.35 }} />
+                
+                {/* النقطة والاسم */}
                 <Marker position={[data.lat, data.lng]} icon={createCountIcon(data.transactions.length)}>
-                  <Tooltip direction="top" offset={[0, -20]} opacity={1} permanent className="custom-tooltip">
-                    <span style={{
-                      fontSize: "12px", 
-                      fontWeight: "900", 
-                      color: "#00f2ff", // لون فيروزي فاقع وواضح جداً
-                      textShadow: "2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000", // تحديد أسود قوي خلف النص
-                      padding: "2px 4px"
-                    }}>{name}</span>
+                  <Tooltip direction="bottom" offset={[0, 10]} opacity={1} permanent className="custom-tooltip">
+                    <div style={{
+                      color: "#FFFF00", // أصفر فاقع
+                      fontSize: "13px",
+                      fontWeight: "bold",
+                      textShadow: "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 0 5px #000",
+                      textAlign: "center",
+                      whiteSpace: "nowrap"
+                    }}>
+                      {name}
+                    </div>
                   </Tooltip>
                 </Marker>
               </React.Fragment>
@@ -141,15 +159,15 @@ export default function App() {
 
       <style>{`
         .leaflet-tooltip.custom-tooltip {
-          background: transparent;
-          border: none;
-          box-shadow: none;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
         }
-        .leaflet-tooltip-top:before { border-top-color: transparent; }
+        .leaflet-tooltip-bottom:before { border-bottom-color: transparent !important; }
       `}</style>
 
       {loading && (
-        <div style={{ position: "absolute", top: "75px", left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "#fbbf24", color: "#000", padding: "8px 25px", borderRadius: "30px", fontSize: "12px", fontWeight: "bold" }}>جاري تحديث الألوان...</div>
+        <div style={{ position: "absolute", top: "75px", left: "50%", transform: "translateX(-50%)", zIndex: 2000, background: "#fbbf24", color: "#000", padding: "8px 20px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold" }}>جاري تحميل المواقع...</div>
       )}
     </div>
   );
