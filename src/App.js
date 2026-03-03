@@ -8,10 +8,10 @@ import "leaflet/dist/leaflet.css";
 // أيقونة الخريطة (تصميم عصري متوهج)
 const createNumberedIcon = (number) => {
   return L.divIcon({
-    html: `<div style="background: #3b82f6; color: white; border: 2px solid #60a5fa; border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 12px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);">${number}</div>`,
+    html: `<div style="background: #3b82f6; color: white; border: 2px solid #60a5fa; border-radius: 50%; width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 11px; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);">${number}</div>`,
     className: "custom-marker",
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
   });
 };
 
@@ -31,33 +31,29 @@ export default function App() {
   const [processedCount, setProcessedCount] = useState(0);
   const mapRef = useRef(null);
 
-  // حساب لون التوهج بناءً على المبيعات
-  const getHeatColor = (revenue) => {
-    const max = Math.max(...Object.values(districtSales), 1);
+  // دالة لتحديد لون الدائرة بناءً على قوة المبيعات (هنا سر التلوين)
+  const getCircleOptions = (revenue) => {
+    const values = Object.values(districtSales);
+    const max = values.length > 0 ? Math.max(...values) : 1;
     const ratio = revenue / max;
-    if (ratio > 0.8) return "#ff4d4d"; // أحمر ناري للأقوى
-    if (ratio > 0.4) return "#fbbf24"; // ذهبي للمتوسط
-    return "#3b82f6"; // أزرق هادئ
-  };
 
-  const exportAsImage = async () => {
-    if (!mapRef.current) return;
-    const canvas = await html2canvas(mapRef.current, { useCORS: true, backgroundColor: "#020617" });
-    const link = document.createElement("a");
-    link.download = `تقرير_مبيعات_جدة.png`;
-    link.href = canvas.toDataURL();
-    link.click();
+    if (ratio > 0.7) return { fillColor: "#ef4444", color: "#ef4444", fillOpacity: 0.5 }; // أحمر (قوي)
+    if (ratio > 0.3) return { fillColor: "#f59e0b", color: "#f59e0b", fillOpacity: 0.4 }; // برتقالي (متوسط)
+    return { fillColor: "#3b82f6", color: "#3b82f6", fillOpacity: 0.3 }; // أزرق (عادي)
   };
 
   const handleUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true);
+    setPoints([]);
+    
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const bstr = evt.target.result;
       const wb = XLSX.read(bstr, { type: "binary" });
       const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+      
       let salesSum = 0;
       let salesPerDist = {};
       let tempPoints = [];
@@ -99,71 +95,87 @@ export default function App() {
     reader.readAsBinaryString(file);
   };
 
+  const exportAsImage = async () => {
+    if (!mapRef.current) return;
+    const canvas = await html2canvas(mapRef.current, { useCORS: true, backgroundColor: "#020617" });
+    const link = document.createElement("a");
+    link.download = `خريطة_مبيعات_جدة.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+
   return (
-    <div style={{ height: "100dvh", width: "100vw", position: "relative", background: "#020617", overflow: "hidden", direction: "rtl", fontFamily: "sans-serif" }}>
+    <div style={{ 
+      height: "100vh", 
+      width: "100vw", 
+      position: "fixed", // لضمان ثبات الشاشة على الجوال
+      top: 0, left: 0,
+      background: "#020617", 
+      overflow: "hidden", 
+      direction: "rtl", 
+      fontFamily: "sans-serif" 
+    }}>
       
-      {/* 🟢 Header: أزرار الرفع والتصدير (دائماً فوق) */}
-      <div style={{ position: "absolute", top: "15px", left: "15px", right: "15px", zIndex: 2000, display: "flex", gap: "10px", justifyContent: "center" }}>
-        <label style={{ background: "#2563eb", color: "white", padding: "12px 20px", borderRadius: "12px", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 8px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>📂</span> رفع Excel
+      {/* الأزرار العلوية */}
+      <div style={{ position: "absolute", top: "15px", width: "100%", zIndex: 2000, display: "flex", gap: "10px", justifyContent: "center", padding: "0 10px" }}>
+        <label style={{ background: "#2563eb", color: "white", padding: "10px 18px", borderRadius: "10px", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 4px 15px rgba(0,0,0,0.4)" }}>
+          📂 رفع ملف Excel
           <input type="file" onChange={handleUpload} style={{ display: "none" }} />
         </label>
         
         {points.length > 0 && (
-          <button onClick={exportAsImage} style={{ background: "#10b981", color: "white", padding: "12px 20px", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 8px 20px rgba(0,0,0,0.4)" }}>
-            📸 حفظ الصورة
+          <button onClick={exportAsImage} style={{ background: "#10b981", color: "white", padding: "10px 18px", borderRadius: "10px", border: "none", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }}>
+            📸 حفظ التقرير
           </button>
         )}
       </div>
 
-      {/* 📊 Floating Stats: لوحة إحصائيات شفافة فخمة */}
+      {/* لوحة الإحصائيات (تظهر فوق الخريطة في الأسفل) */}
       <div style={{ 
         position: "absolute", 
-        bottom: "20px", 
-        right: "15px", 
-        left: "15px", 
+        bottom: "10px", 
+        left: "10px", 
+        right: "10px", 
         zIndex: 1500, 
-        background: "rgba(15, 23, 42, 0.85)", 
-        backdropFilter: "blur(10px)", 
+        background: "rgba(15, 23, 42, 0.9)", 
         padding: "15px", 
-        borderRadius: "20px", 
-        border: "1px solid rgba(255,255,255,0.1)",
-        maxHeight: "30vh",
+        borderRadius: "15px", 
+        maxHeight: "25vh", 
         overflowY: "auto",
-        boxShadow: "0 -10px 25px rgba(0,0,0,0.5)"
+        border: "1px solid rgba(255,255,255,0.1)"
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", borderBottom: "1px solid #334155", paddingBottom: "10px" }}>
-          <span style={{ fontSize: "14px", color: "#94a3b8" }}>إجمالي المبيعات:</span>
-          <span style={{ fontSize: "20px", fontWeight: "bold", color: "#10b981" }}>{totalSales.toLocaleString()} <small style={{fontSize: "10px"}}>ر.س</small></span>
+        <div style={{ borderBottom: "1px solid #334155", paddingBottom: "5px", marginBottom: "5px", display: "flex", justifyContent: "space-between" }}>
+          <span style={{color: "#94a3b8", fontSize: "12px"}}>إجمالي المبيعات</span>
+          <span style={{color: "#10b981", fontWeight: "bold"}}>{totalSales.toLocaleString()} ر.س</span>
         </div>
-        
         {Object.entries(districtSales).sort((a,b) => b[1]-a[1]).map(([name, val], i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", padding: "5px 0" }}>
-            <span style={{ color: "#f8fafc" }}>{i+1}. {name}</span>
-            <span style={{ color: "#60a5fa", fontWeight: "600" }}>{val.toLocaleString()}</span>
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", margin: "4px 0" }}>
+            <span style={{color: "#fff"}}>{name}</span>
+            <span style={{color: "#3b82f6"}}>{val.toLocaleString()}</span>
           </div>
         ))}
       </div>
 
-      {/* 🗺️ Map Container: شاشة كاملة */}
+      {/* الخريطة - تأخذ كامل مساحة الخلفية */}
       <div style={{ height: "100%", width: "100%" }} ref={mapRef}>
-        <MapContainer center={[21.5433, 39.1728]} zoom={12} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+        <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false}>
+          {/* تم اختيار طبقة CartoDB Dark لضمان جمال الألوان */}
           <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
           <MapController center={[21.5433, 39.1728]} />
           
           {points.map((p) => (
             <React.Fragment key={p.id}>
+              {/* الدوائر الملونة (Heatmap) */}
               <Circle 
                 center={[p.lat, p.lng]} 
-                radius={900} 
-                pathOptions={{ fillColor: getHeatColor(districtSales[p.district]), color: "transparent", fillOpacity: 0.4 }} 
+                radius={800} 
+                pathOptions={getCircleOptions(districtSales[p.district])} 
               />
               <Marker position={[p.lat, p.lng]} icon={createNumberedIcon(p.id)}>
                 <Tooltip sticky>
-                  <div style={{ textAlign: "right", color: "#1e293b", fontSize: "12px" }}>
+                  <div style={{ textAlign: "right", fontSize: "12px" }}>
                     <strong>{p.name}</strong><br/>
-                    📍 حي {p.district}<br/>
-                    💰 المبيعات: {p.revenue.toLocaleString()} ر.س
+                    💰 {p.revenue.toLocaleString()} ر.س
                   </div>
                 </Tooltip>
               </Marker>
@@ -172,9 +184,8 @@ export default function App() {
         </MapContainer>
       </div>
 
-      {/* Loading Overlay */}
       {loading && (
-        <div style={{ position: "absolute", top: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 3000, background: "#fbbf24", color: "#000", padding: "5px 15px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", boxShadow: "0 4px 15px rgba(251, 191, 36, 0.4)" }}>
+        <div style={{ position: "absolute", top: "75px", left: "50%", transform: "translateX(-50%)", zIndex: 3000, background: "#fbbf24", color: "#000", padding: "4px 12px", borderRadius: "15px", fontSize: "11px", fontWeight: "bold" }}>
           جاري المعالجة: {processedCount}
         </div>
       )}
