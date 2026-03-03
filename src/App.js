@@ -60,63 +60,69 @@ export default function App() {
   };
 
   const capture = () => {
-    const ui = document.getElementById("ui-container");
-    ui.style.display = "none";
+    const ui = document.getElementById("ui-top");
+    const btn = document.getElementById("report-btn");
+    if (ui) ui.style.display = "none";
+    if (btn) btn.style.display = "none";
     html2canvas(fullScreenRef.current).then(canvas => {
       const a = document.createElement("a");
       a.download = "Map.png"; a.href = canvas.toDataURL(); a.click();
-      ui.style.display = "block";
+      if (ui) ui.style.display = "flex";
+      if (btn) btn.style.display = "block";
     });
   };
 
   return (
-    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, direction: "rtl", fontFamily: "sans-serif" }}>
+    <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top:0, left:0, fontFamily: "sans-serif" }}>
       
-      {/* واجهة التحكم */}
-      <div id="ui-container" style={{ position: "absolute", inset: 0, zIndex: 10000, pointerEvents: "none" }}>
+      {/* الهيدر العلوي: الاسم يسار والأزرار يمين */}
+      <div id="ui-top" style={{ position: "absolute", top: 0, width: "100%", zIndex: 1000, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", background: "rgba(0,0,0,0.8)", boxSizing: "border-box" }}>
+        {/* اليسار (اسم الموقع) */}
+        <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "900" }}>VISIONARY MAP</div>
         
-        {/* الهيدر: الاسم يسار، الأزرار يمين */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 15px", background: "rgba(0,0,0,0.75)", pointerEvents: "auto", flexDirection: "row-reverse" }}>
-          {/* اليمين (برمجياً هو النهاية بسبب Row-Reverse) */}
-          <div style={{ display: "flex", gap: "8px" }}>
-            <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold", cursor: "pointer" }}>
-              رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
-            </label>
-            {Object.keys(districtsData).length > 0 && (
-              <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "bold" }}>حفظ</button>
-            )}
-          </div>
-          {/* اليسار */}
-          <div style={{ color: "#00f2ff", fontSize: "18px", fontWeight: "900", letterSpacing: "1px" }}>VISIONARY MAP</div>
+        {/* اليمين (أزرار التحكم) */}
+        <div style={{ display: "flex", gap: "8px", direction: "rtl" }}>
+          <label style={{ background: "#2563eb", color: "#fff", padding: "8px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
+            رفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+          </label>
+          {Object.keys(districtsData).length > 0 && (
+            <button onClick={capture} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold" }}>حفظ</button>
+          )}
         </div>
+      </div>
 
-        {/* التقرير المحكم للجوال */}
-        {Object.keys(districtsData).length > 0 && (
-          <div style={{ position: "absolute", bottom: "25px", left: "50%", transform: "translateX(-50%)", width: "90%", maxWidth: "360px", pointerEvents: "auto" }}>
-            <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px", borderRadius: "12px", fontWeight: "bold", boxShadow: "0 5px 20px #000" }}>
-              {showReport ? "▼ إغلاق التقرير" : "▲ عرض إحصائيات العملاء"}
-            </button>
-            
-            {showReport && (
-              <div style={{ background: "rgba(10, 15, 30, 0.98)", padding: "15px", borderRadius: "12px", marginTop: "10px", maxHeight: "45vh", overflowY: "auto", border: "1px solid #333", color: "white", boxShadow: "0 0 20px #000" }}>
-                <div style={{ color: "#10b981", fontSize: "17px", fontWeight: "bold", borderBottom: "1px solid #444", marginBottom: "10px", paddingBottom: "5px" }}>
-                  إجمالي المبيعات: {totalSales.toLocaleString()} SAR
-                </div>
-                {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
-                  <div key={name} style={{ marginBottom: "12px", borderBottom: "1px solid #222" }}>
-                    <div style={{ color: "#00f2ff", fontSize: "14px", fontWeight: "bold" }}>حي {name} ({data.clients.length})</div>
-                    {data.clients.map((c, i) => (
-                      <div key={i} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", opacity: 0.9 }}>
-                        <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
+      {/* زر فتح التقرير (يظهر فقط بعد رفع الملف) */}
+      {Object.keys(districtsData).length > 0 && !showReport && (
+        <button id="report-btn" onClick={() => setShowReport(true)} style={{ position: "absolute", bottom: "30px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#1e293b", color: "#00f2ff", border: "2px solid #00f2ff", padding: "12px 25px", borderRadius: "30px", fontWeight: "bold", boxShadow: "0 0 20px #000" }}>
+          ▲ عرض إحصائيات العملاء
+        </button>
+      )}
+
+      {/* نافذة التقرير (Modal) تظهر فوق كل شيء */}
+      {showReport && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.95)", display: "flex", flexDirection: "column", padding: "20px", direction: "rtl" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <h2 style={{ color: "#00f2ff", margin: 0 }}>تقرير المبيعات</h2>
+            <button onClick={() => setShowReport(false)} style={{ background: "#ff4444", color: "#fff", border: "none", padding: "8px 15px", borderRadius: "8px", fontWeight: "bold" }}>إغلاق X</button>
+          </div>
+          
+          <div style={{ flex: 1, overflowY: "auto", color: "white" }}>
+            <div style={{ background: "#10b981", padding: "15px", borderRadius: "10px", textAlign: "center", marginBottom: "20px", fontSize: "18px", fontWeight: "bold" }}>
+              إجمالي المبيعات: {totalSales.toLocaleString()} SAR
+            </div>
+            {Object.entries(districtsData).sort((a,b)=>b[1].total - a[1].total).map(([name, data]) => (
+              <div key={name} style={{ marginBottom: "15px", borderBottom: "1px solid #333", paddingBottom: "10px" }}>
+                <div style={{ color: "#00f2ff", fontSize: "16px", fontWeight: "bold" }}>حي {name} ({data.clients.length})</div>
+                {data.clients.map((c, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", opacity: 0.9, marginTop: "5px" }}>
+                    <span>• {c.name}</span><span>{c.amount.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
-            )}
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%", zIndex: 1 }} zoomControl={false}>
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
