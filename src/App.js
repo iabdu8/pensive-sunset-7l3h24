@@ -1,23 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
 
-// حل نهائي لمشكلة الأيقونات المختفية عبر رسمها يدوياً كـ SVG
-const cyanDotIcon = L.divIcon({
-  html: `<div style="background: #00f2ff; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px #00f2ff;"></div>`,
-  className: '',
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
-});
-
-function MapController({ center }) {
+function MapController() {
   const map = useMap();
   useEffect(() => {
-    if (center) map.panTo(center);
-  }, [center, map]);
+    map.setView([21.5433, 39.1728], 11);
+  }, [map]);
   return null;
 }
 
@@ -35,10 +27,7 @@ export default function App() {
     const reader = new FileReader();
 
     reader.onload = async (evt) => {
-      const bstr = evt.target.result;
-      const wb = XLSX.read(bstr, { type: "binary" });
-      const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-      
+      const data = XLSX.utils.sheet_to_json(XLSX.read(evt.target.result, { type: "binary" }).Sheets[XLSX.read(evt.target.result, { type: "binary" }).SheetNames[0]]);
       let sum = 0;
       let tempDistricts = {};
       const JEDDAH_VIEWBOX = "39.09,21.15,39.35,21.90";
@@ -61,24 +50,17 @@ export default function App() {
           tempDistricts[distName].total += amount;
           tempDistricts[distName].transactions.push({ name: client, amount });
 
-          // إذا لم نملك الإحداثيات لهذا الحي، نجلبها
           if (!tempDistricts[distName].lat) {
             try {
-              // زيادة التأخير لضمان عدم الحظر من الخادم
-              await new Promise(r => setTimeout(r, 800)); 
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("حي " + distName + " جدة")}&viewbox=${JEDDAH_VIEWBOX}&bounded=1`
-              );
-              const result = await response.json();
-              if (result && result[0]) {
-                tempDistricts[distName].lat = parseFloat(result[0].lat);
-                tempDistricts[distName].lng = parseFloat(result[0].lon);
+              await new Promise(r => setTimeout(r, 600)); 
+              const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent("حي " + distName + " جدة")}&viewbox=${JEDDAH_VIEWBOX}&bounded=1`);
+              const json = await res.json();
+              if (json && json[0]) {
+                tempDistricts[distName].lat = parseFloat(json[0].lat);
+                tempDistricts[distName].lng = parseFloat(json[0].lon);
               }
-            } catch (err) {
-              console.error("خطأ في جلب إحداثيات الحي:", distName);
-            }
+            } catch (err) {}
           }
-          // تحديث الواجهة فورياً عند جلب كل حي
           setDistrictsData({ ...tempDistricts });
         }
       }
@@ -88,21 +70,35 @@ export default function App() {
     reader.readAsBinaryString(file);
   };
 
+  const captureReport = () => {
+    const actionButtons = document.getElementById("action-buttons");
+    actionButtons.style.display = "none";
+    html2canvas(fullScreenRef.current, { useCORS: true, backgroundColor: "#000", scale: 2 }).then(canvas => {
+      const link = document.createElement("a");
+      link.download = "Visionary_Map_Report.png";
+      link.href = canvas.toDataURL();
+      link.click();
+      actionButtons.style.display = "flex";
+    });
+  };
+
   return (
     <div ref={fullScreenRef} style={{ height: "100vh", width: "100vw", background: "#000", position: "fixed", top: 0, left: 0, direction: "rtl", fontFamily: "sans-serif" }}>
       
-      <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 1000, color: "#00f2ff", fontSize: "20px", fontWeight: "900", fontStyle: "italic" }}>
+      <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 9999, color: "#00f2ff", fontSize: "20px", fontWeight: "900", fontStyle: "italic", textShadow: "0 0 10px #000" }}>
         VISIONARY MAP
       </div>
 
-      <div id="action-buttons" style={{ position: "absolute", top: "15px", width: "100%", zIndex: 1000, display: "flex", justifyContent: "center", gap: "10px" }}>
-        <label style={{ background: "#2563eb", color: "#fff", padding: "10px 20px", borderRadius: "30px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}>
-          ارفع ملف الإكسل
-          <input type="file" onChange={handleUpload} style={{ display: "none" }} />
+      <div id="action-buttons" style={{ position: "absolute", top: "15px", width: "100%", zIndex: 9999, display: "flex", justifyContent: "center", gap: "10px" }}>
+        <label style={{ background: "#2563eb", color: "#fff", padding: "10px 20px", borderRadius: "30px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}>
+          ارفع الملف <input type="file" onChange={handleUpload} style={{ display: "none" }} />
         </label>
+        {Object.keys(districtsData).length > 0 && (
+          <button onClick={captureReport} style={{ background: "#10b981", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "30px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}>📸 حفظ التقرير</button>
+        )}
       </div>
 
-      <div style={{ position: "absolute", bottom: "30px", right: "20px", zIndex: 1000, width: showReport ? "250px" : "120px", transition: "0.3s" }}>
+      <div style={{ position: "absolute", bottom: "30px", right: "20px", zIndex: 9999, width: showReport ? "250px" : "120px", transition: "0.3s" }}>
         <button onClick={() => setShowReport(!showReport)} style={{ width: "100%", background: "#1e293b", color: "#00f2ff", border: "1px solid #00f2ff", padding: "8px", borderRadius: "10px", cursor: "pointer", fontWeight: "bold", marginBottom: "5px" }}>
           {showReport ? "▼ إخفاء" : "▲ التقرير"}
         </button>
@@ -126,32 +122,30 @@ export default function App() {
 
       <MapContainer center={[21.5433, 39.1728]} zoom={11} style={{ height: "100%", width: "100%", background: "#050505" }} zoomControl={false}>
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-        <MapController center={[21.5433, 39.1728]} />
+        <MapController />
         
         {Object.entries(districtsData).map(([name, data]) => (
           data.lat && (
             <React.Fragment key={name}>
-              {/* الدائرة الحمراء (منطقة التأثير) */}
-              <Circle 
+              {/* النقطة الفيروزية المضيئة كعنصر مرسوم برمجياً */}
+              <CircleMarker 
                 center={[data.lat, data.lng]} 
-                radius={1200} 
-                pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.3 }} 
-              />
-              
-              {/* النقطة الفيروزية */}
-              <Marker position={[data.lat, data.lng]} icon={cyanDotIcon}>
+                radius={8} 
+                pathOptions={{ fillColor: "#00f2ff", color: "#fff", weight: 2, fillOpacity: 1 }} 
+              >
                 <Tooltip direction="top" offset={[0, -10]} opacity={1} permanent className="custom-tooltip">
-                  <div style={{
-                    color: "#FFFF00", 
-                    fontSize: "14px", 
-                    fontWeight: "900", 
-                    textShadow: "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000",
-                    whiteSpace: "nowrap"
-                  }}>
-                    {name}
+                  <div style={{ color: "#FFFF00", fontSize: "14px", fontWeight: "900", textShadow: "2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000" }}>
+                    {name} ({data.transactions.length})
                   </div>
                 </Tooltip>
-              </Marker>
+              </CircleMarker>
+
+              {/* دائرة التأثير الحمراء */}
+              <Circle 
+                center={[data.lat, data.lng]} 
+                radius={1300} 
+                pathOptions={{ fillColor: "#ff0000", color: "transparent", fillOpacity: 0.3 }} 
+              />
             </React.Fragment>
           )
         ))}
@@ -163,8 +157,8 @@ export default function App() {
       `}</style>
 
       {loading && (
-        <div style={{ position: "absolute", top: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 2000, background: "#fbbf24", color: "#000", padding: "10px 30px", borderRadius: "30px", fontWeight: "bold" }}>
-          جاري رسم النقاط على الخريطة...
+        <div style={{ position: "absolute", top: "80px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, background: "#fbbf24", color: "#000", padding: "10px 30px", borderRadius: "30px", fontWeight: "bold" }}>
+          جاري رسم البيانات...
         </div>
       )}
     </div>
